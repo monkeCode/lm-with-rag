@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package Rag;
+
+message VectorizeRequest {
+    repeated string documents = 1;
+}
+
+message VectorizeResponse {
+    int32 result = 1;
+}
+
+message GetAnswerRequest {
+    string document = 1;
+}
+
+message SimilarDocument {
+    string document = 1;
+    float similarity = 2;
+}
+
+message GetAnswerResponse {
+    repeated SimilarDocument answers = 1;
+}
+
+service RagService {
+    rpc Vectorize(VectorizeRequest) returns (VectorizeResponse);
+    rpc GetAnswer(GetAnswerRequest) returns (GetAnswerResponse);
+}
