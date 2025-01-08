@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+message QuestionRequest
+{
+    repeated string messages = 1;
+}
+
+message QuestionResponse
+{
+    string message = 1;
+}
+
+service LanguageModel 
+{
+    rpc Chat(QuestionRequest) returns QuestionResponse;
+}

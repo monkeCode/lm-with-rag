@@ -26,7 +26,6 @@ class RagServiceServicer(rag_pb2_grpc.RagServiceServicer):
         mins =  db.find_mins(embed, metrics.cosine_metric, 3)
         answers = []
         for min in mins:
-            print(min)
             answers.append(rag_pb2.SimilarDocument(document=min[0], similarity=min[1]))
         return rag_pb2.GetAnswerResponse(answers=answers)
 

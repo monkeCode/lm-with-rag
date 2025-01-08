@@ -41,7 +41,7 @@ hidden = 512
 embed = 256
 
 model = LSTMModel(tokenizer.vocab_size+1, hidden, embed, 2)
-model.load_state_dict(torch.load(MODEL_FILE, weights_only=True))
+model.load_state_dict(torch.load(MODEL_FILE, weights_only=True, map_location=torch.device(DEVICE)))
 
 for param in model.parameters():
     param.requires_grad = False
