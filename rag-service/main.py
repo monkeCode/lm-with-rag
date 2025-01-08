@@ -9,14 +9,13 @@ import model_inference
 import metrics
 
 
-
 PORT = os.getenv("grpc_port", 50001)
 
-db: database_interface.DataBase = pandas_db.PandasDatabase("db.csv")
+db: database_interface.DataBase = pandas_db.PandasDatabase("db.pickle")
 
 class RagServiceServicer(rag_pb2_grpc.RagServiceServicer):
     def Vectorize(self, request, context):
-        # Простой пример: возвращаем количество документов
+        # TODO: make database vectorization
         result = len(request.documents)
         return rag_pb2.VectorizeResponse(result=result)
 
@@ -37,5 +36,5 @@ def serve():
     server.wait_for_termination()
 
 if __name__ == "__main__":
-    print(f"server start at port: {PORT} and device: {model_inference.DEVICE}")
+    print(f"server starts at port: {PORT} and device: {model_inference.DEVICE}")
     serve()

@@ -1,8 +1,7 @@
 import grpc
 from grpc_files import rag_pb2, rag_pb2_grpc
-import os
 
-PORT = os.getenv("grpc_port", 50001)
+PORT = 50001
 
 
 def run():

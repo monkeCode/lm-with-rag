@@ -1,8 +1,13 @@
 syntax = "proto3";
 
+
+message QueryMessage{
+    string author = 1;
+    string text = 2;
+}
 message QuestionRequest
 {
-    repeated string messages = 1;
+    repeated QueryMessage messages = 1;
 }
 
 message QuestionResponse
@@ -12,5 +17,5 @@ message QuestionResponse
 
 service LanguageModel 
 {
-    rpc Chat(QuestionRequest) returns QuestionResponse;
+    rpc Chat(QuestionRequest) returns (stream QuestionResponse);
 }

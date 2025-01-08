@@ -6,8 +6,6 @@ class PandasDatabase(database_interface.DataBase):
     
     def __init__(self, file):
         self.pd = pd.read_pickle(file)
-        #print(self.pd.head())
-        #print(self.pd.vector.values[0].mean())
     
     
     def add_new_data(self, embeds, answers):
