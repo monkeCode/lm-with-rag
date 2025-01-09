@@ -14,7 +14,7 @@ def run():
         print(f"Vectorize Response: {vectorize_response.result}")
 
         # Пример запроса GetAnswer
-        get_answer_request = rag_pb2.GetAnswerRequest(document="calculate $sin(2 * \\pi)$")
+        get_answer_request = rag_pb2.GetAnswerRequest(document="calculate $\sin(5x)$")
         get_answer_response = stub.GetAnswer(get_answer_request)
         for answer in get_answer_response.answers:
             print(f"Document: {answer.document}\n Similarity: {answer.similarity}")

@@ -1,10 +1,10 @@
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+from transformers import AutoTokenizer
 import os
+import model_inteface
 
 DEVICE = os.getenv("device", "cuda" if torch.cuda.is_available() else "cpu")
 MODEL_FILE = os.getenv("model_path", "model.pt")
-print(MODEL_FILE)
 
 class Attention(torch.nn.Module):
     def __init__(self, hidden_size):
@@ -35,27 +35,32 @@ class LSTMModel(torch.nn.Module):
         return self.fc(torch.cat([hidden[-1], attention_res], dim=1))
     
 
-tokenizer = AutoTokenizer.from_pretrained("microsoft/Phi-3-mini-4k-instruct")
+class LSTMDecorator(model_inteface.Model):
 
-hidden = 512
-embed = 256
+    def __init__(self):
+        self.tokenizer = AutoTokenizer.from_pretrained("microsoft/Phi-3-mini-4k-instruct")
+        hidden = 512
+        embed = 256
 
-model = LSTMModel(tokenizer.vocab_size+1, hidden, embed, 2)
-model.load_state_dict(torch.load(MODEL_FILE, weights_only=True, map_location=torch.device(DEVICE)))
+        self.model = LSTMModel(self.tokenizer.vocab_size+1, hidden, embed, 2)
+        self.model.load_state_dict(torch.load(MODEL_FILE, weights_only=True, map_location=torch.device(DEVICE)))
 
-for param in model.parameters():
-    param.requires_grad = False
+        for param in self.model.parameters():
+            param.requires_grad = False
+            
+        self.model.eval()
+
+    @torch.no_grad()
+    def embed_batch(self, x):
+        tokenized = self.tokenizer.batch_encode_plus(x, padding=True, max_length=1024, truncation=True, return_tensors="pt", return_length=False)["input_ids"]
+        embeded = self.model(tokenized)
+        return embeded.cpu().numpy()
+
+    @torch.no_grad()
+    def embed(self, x):
+        tokenized = self.tokenizer(x, return_tensors="pt")["input_ids"]
+        embeded = self.model(tokenized)[0]
+        return embeded.cpu().numpy()
     
-model.eval()
-
-@torch.no_grad()
-def embed_batch(x):
-    tokenized = tokenizer.batch_encode_plus(x, padding=True, max_length=1024, truncation=True, return_tensors="pt", return_length=False)["input_ids"]
-    embeded = model(tokenized)
-    return embeded.cpu().numpy()
-
-@torch.no_grad()
-def embed(x):
-    tokenized = tokenizer(x, return_tensors="pt")["input_ids"]
-    embeded = model(tokenized)[0]
-    return embeded.cpu().numpy()
+    def get_device(self):
+        return DEVICE

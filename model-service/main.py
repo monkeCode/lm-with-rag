@@ -1,13 +1,16 @@
 import grpc
 import os
 from grpc_files import lm_pb2, lm_pb2_grpc
-import model
+import model_interface
+import phi3_api
 from concurrent import futures
 
 PORT = os.getenv("grpc_port", 50001)
 
+model:model_interface.Model = phi3_api.Phi3()
+
 def messages_to_json(messages:list[lm_pb2.QueryMessage]) -> list[dict[str, str]]:
-    return [{"role": m.author, "content":m.text} for m in messages]
+    return [{"role": m.author, "content": m.text} for m in messages]
 
 
 class LmServiceServicer(lm_pb2_grpc.LanguageModelServicer):

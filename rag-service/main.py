@@ -4,14 +4,16 @@ from concurrent import futures
 import database_interface
 import pandas_db
 import os
-from model_inference import LSTMModel, Attention
-import model_inference
+import model_inteface
+import lstm_model
 import metrics
 
 
 PORT = os.getenv("grpc_port", 50001)
 
 db: database_interface.DataBase = pandas_db.PandasDatabase("db.pickle")
+model: model_inteface.Model = lstm_model.LSTMDecorator()
+
 
 class RagServiceServicer(rag_pb2_grpc.RagServiceServicer):
     def Vectorize(self, request, context):
@@ -21,7 +23,7 @@ class RagServiceServicer(rag_pb2_grpc.RagServiceServicer):
 
     def GetAnswer(self, request, context):
         
-        embed = model_inference.embed(request.document)
+        embed = model.embed(request.document)
         mins =  db.find_mins(embed, metrics.cosine_metric, 3)
         answers = []
         for min in mins:
@@ -36,5 +38,5 @@ def serve():
     server.wait_for_termination()
 
 if __name__ == "__main__":
-    print(f"server starts at port: {PORT} and device: {model_inference.DEVICE}")
+    print(f"server starts at port: {PORT} and device: {model.get_device()}")
     serve()
