@@ -1,3 +1,4 @@
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -35,7 +36,7 @@ spec:
               name: mysql-secret
               key: MYSQL_DATABASE
         - name: database_url
-          value: "database"
+          value: "mysql"
         - name: database_port
           value: "3306"
         - name: database_user
@@ -48,5 +49,17 @@ spec:
             secretKeyRef:
               key: MYSQL_PASSWORD
               name: mysql-secret
+        volumeMounts:
+        - mountPath: /app
+          name: code
+      volumes:
+      - name: code
+        hostPath:
+          path:  /run/desktop/mnt/host/c/Users/georg/code/lm-with-rag/backend
+        
+      
+
+
+
 
 

@@ -8,32 +8,33 @@ from rag_api import Rag
 from lm_api import Lm
 from typing import Union
 from hash import hash_str
+from dataclasses import asdict
+import mysql_database
+import datetime
 
-db = Database()
+db = mysql_database.MysqlDatabase("mysql", DATABASE_NAME, DATABASE_USER, DATABASE_PASSWORD)
 rag = Rag(RAG_ADDR, RAG_PORT)
-model = Lm(RAG_ADDR, RAG_PORT)
+model = Lm(MODEL_ADDR, MODEL_PORT)
 app = FastAPI()
 
 
 async def auth(session_key: Union[str, None] = Cookie(alias="session_key")) -> entities.User:
     user = await db.get_user(session_key) if session_key is not None else None
-    print(user)
     if user is None:
         raise HTTPException(401, "Unauthorized")
     return user
 
-def generate_text(chat_id, documents):
+async def generate_text(chat_id, documents):
     total_msg = ""
     for s in model.generate_text(documents):
         yield s
         total_msg += s
-
-    db.add_message(entities.Message(id=0, chat_id=chat_id, author="assistant", text=total_msg))
+    await db.add_message(entities.Message(id=0, chat_id=chat_id, author="assistant", date= datetime.datetime.now(), text=total_msg))
 
 
 @app.get("/api/chat/{chat_id}",)
 async def chat_get(chat_id:int, user = Depends(auth)):
-    if len(filter(lambda x: x.id == chat_id, user.chats)) == 0:
+    if len(list(filter(lambda x: x.id == chat_id, user.chats))) == 0:
         raise HTTPException(403, "this chat isn't your")
     chat = await db.get_chat(chat_id)
     if chat is not None:
@@ -42,12 +43,12 @@ async def chat_get(chat_id:int, user = Depends(auth)):
 
 @app.post("/api/chat/",)
 async def chat_post(user:entities.User = Depends(auth)):
-    chat = db.create_chat(user.id)
-    return JSONResponse(chat, status_code=201)
+    chat = await db.create_chat(user.id)
+    return JSONResponse(asdict(chat), status_code=201)
 
 @app.delete("/api/chat/{chat_id}",)
 async def chat_delete(chat_id:int, user:entities.User = Depends(auth)):
-    if len(filter(lambda x: x.id == chat_id, user.chats)) == 0:
+    if len(list(filter(lambda x: x.id == chat_id, user.chats))) == 0:
         raise HTTPException(403, "this chat isn't your")
     
     res = await db.delete_chat(chat_id)
@@ -58,13 +59,13 @@ async def rag_serarh(data = Body()):
     answers = await rag.get_answers(data["text"])
     return answers
 
-@app.get("/api/chats/")
+@app.get("/api/chat/")
 async def get_chats(user:entities.User = Depends(auth)):
     return user.chats
 
 @app.post("/api/send_message/{chat_id}")
 async def send_message(chat_id:int, data = Body(), user:entities.User = Depends(auth)):
-    if len(filter(lambda x: x.id == chat_id, user.chats)) == 0:
+    if len(list(filter(lambda x: x.id == chat_id, user.chats))) == 0:
         raise HTTPException(403, "this chat isn't your")
     chat = await db.get_chat(chat_id)
     if chat is None:
@@ -72,8 +73,8 @@ async def send_message(chat_id:int, data = Body(), user:entities.User = Depends(
     messages = list()
     if "preamble" in data:
         preambule = data["preamble"]
-        messages.append(entities.Message(id=0, author="system", text=preambule))
-    message = await db.add_message(chat_id, entities.Message(id=0, chat_id=chat_id, author="user", text = data["text"]))
+        messages.append(entities.Message(id=0, author="system", date=datetime.datetime.now(), text=preambule))
+    message = await db.add_message(entities.Message(id=0, chat_id=chat_id, author="user", date=datetime.datetime.now(), text = data["text"]))
     messages.extend(chat.messages)
     messages.append(message)
     return StreamingResponse(generate_text(chat_id, messages))
@@ -85,7 +86,7 @@ async def login(body = Body()):
     user, key = await db.login(login, hash_str(password))
     if user is None:
         raise HTTPException(400, "login or password is incorect")
-    resp = JSONResponse(user)
+    resp = JSONResponse(asdict(user))
     resp.set_cookie("session_key", key)
     return resp
 
@@ -95,8 +96,10 @@ async def register(body=Body()):
     password = body["password"]
     name = body["name"]
     try:
-        user, secret_key = await db.register(name, login, password)
-        resp = JSONResponse(user, status_code=201)
+        user, secret_key = await db.register(name, login,  hash_str(password))
+        resp = JSONResponse(asdict(user), status_code=201)
         resp.set_cookie("session_key", secret_key)
+        return resp
     except Exception as e:
+        print(e)
         return HTTPException(status_code= 400, detail="user already exists")

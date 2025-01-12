@@ -5,19 +5,25 @@ from hash import generate_random_hash
 
 class MysqlDatabase(database.Database):
 
-    def __init__(self, host, database, user, password):
+    def __init__(self, host, database, user, password, drop_database=False):
         self.host = host
         self.database = database
         self.user = user
         self.password = password
+
+        if(not self.check_exists()):
+            self.create_database()
+        elif drop_database:
+            self.drop_database()
+            self.create_database()
     
     def check_exists(self) -> bool:
         with self.connect() as connection:
             cursor = connection.cursor()
-            cursor.execute("SELECT Exists (select * from INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'users' );)", (self.database,))
-            res = cursor.fetchone()[0]
+            cursor.execute("SELECT Exists (select * from INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'users' );)", (self.database,), multi=True)
+            res = cursor.fetchone()
             cursor.close()
-            return res == 1
+            return (res is not None and res == 1)
     
     def create_database(self):
         with self.connect() as connection:
@@ -33,13 +39,17 @@ class MysqlDatabase(database.Database):
                     session_key VARCHAR(255)
                 );
             """)
+
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS chats (
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     user_id INT,
                     FOREIGN KEY (user_id) REFERENCES users(id)
+                        ON UPDATE CASCADE
+                        ON DELETE CASCADE
                 );
             """)
+
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS messages (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -48,8 +58,11 @@ class MysqlDatabase(database.Database):
                     author VARCHAR(255),
                     text TEXT,
                     FOREIGN KEY (chat_id) REFERENCES chats(id)
+                        ON UPDATE CASCADE
+                        ON DELETE CASCADE
                 );
             """)
+            connection.commit()
             cursor.close()
 
 
@@ -57,6 +70,7 @@ class MysqlDatabase(database.Database):
         with self.connect() as connection:
             cursor = connection.cursor()
             cursor.execute("SELECT GROUP_CONCAT('DROP TABLE IF EXISTS ', table_name, ';') FROM information_schema.tables WHERE table_schema = %s;", (self.database,))
+            connection.commit()
             cursor.close()
 
     def connect(self):
@@ -68,7 +82,7 @@ class MysqlDatabase(database.Database):
             cursor.execute("select id, name from users where session_key =%s", (key,))
             user = cursor.fetchone()
             if user is not None:
-                chats = self.get_chats(user_id=user[0])
+                chats = await self.get_chats(user_id=user[0])
                 return entities.User(id=user[0], name=user[1], chats=chats)
             cursor.close()
             return None
@@ -76,7 +90,7 @@ class MysqlDatabase(database.Database):
     async def get_chat(self, chat_id):
         with self.connect() as connection:
             cursor = connection.cursor()
-            cursor.execute("select user_id, from chats where id = %s", (chat_id,))
+            cursor.execute("select user_id from chats where id = %s", (chat_id,))
             chat_data = cursor.fetchone()
             if chat_data is None:
                 return None
@@ -149,7 +163,7 @@ class MysqlDatabase(database.Database):
             user = cursor.fetchone()
             cursor.close()
             if user is not None:
-                chats = self.get_chats(user_id=user[0])
+                chats = await self.get_chats(user_id=user[0])
                 return entities.User(id=user[0], name=user[1], chats=chats), user[2]
             return None, None
 
