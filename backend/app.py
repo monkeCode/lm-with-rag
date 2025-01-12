@@ -7,14 +7,13 @@ from database import Database
 from rag_api import Rag
 from lm_api import Lm
 from typing import Union
+from hash import hash_str
 
 db = Database()
 rag = Rag(RAG_ADDR, RAG_PORT)
 model = Lm(RAG_ADDR, RAG_PORT)
 app = FastAPI()
 
-def hash(password):
-    return password
 
 async def auth(session_key: Union[str, None] = Cookie(alias="session_key")) -> entities.User:
     user = await db.get_user(session_key) if session_key is not None else None
@@ -83,7 +82,7 @@ async def send_message(chat_id:int, data = Body(), user:entities.User = Depends(
 async def login(body = Body()):
     login = body["login"]
     password = body["password"]
-    user, key = await db.login(login, hash(password))
+    user, key = await db.login(login, hash_str(password))
     if user is None:
         raise HTTPException(400, "login or password is incorect")
     resp = JSONResponse(user)
