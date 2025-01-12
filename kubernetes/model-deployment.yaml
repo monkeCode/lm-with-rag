@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model
+  labels:
+    app: model
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: model
+  template:
+    metadata:
+      labels:
+        app: model
+    spec:
+      containers:
+      - name: model-container
+        image: jorjo2009/model-service:latest
+        ports:
+        - containerPort: 50001
+        resources:
+          limits:
+            memory: "200Mi"
+            cpu: "0.1"
+          requests:
+            memory: "200Mi"
+            cpu: "0.1"
+
+
