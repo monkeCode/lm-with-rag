@@ -11,12 +11,15 @@ from hash import hash_str
 from dataclasses import asdict
 import mysql_database
 import datetime
+from fastapi.middleware.cors import CORSMiddleware
 
-db = mysql_database.MysqlDatabase("mysql", DATABASE_NAME, DATABASE_USER, DATABASE_PASSWORD)
+db = mysql_database.MysqlDatabase(DATABASE_URL, DATABASE_NAME, DATABASE_USER, DATABASE_PASSWORD)
 rag = Rag(RAG_ADDR, RAG_PORT)
 model = Lm(MODEL_ADDR, MODEL_PORT)
 app = FastAPI()
+origins = ["http://localhost:3000", "http://127.0.0.1:3000",]
 
+app.add_middleware(CORSMiddleware, allow_origins = origins, allow_credentials=True,  allow_methods = ["*"], allow_headers = ["*"])
 
 async def auth(session_key: Union[str, None] = Cookie(alias="session_key")) -> entities.User:
     user = await db.get_user(session_key) if session_key is not None else None
@@ -34,7 +37,7 @@ async def generate_text(chat_id, documents):
 
 @app.get("/api/chat/{chat_id}",)
 async def chat_get(chat_id:int, user = Depends(auth)):
-    if len(list(filter(lambda x: x.id == chat_id, user.chats))) == 0:
+    if len(origins(filter(lambda x: x.id == chat_id, user.chats))) == 0:
         raise HTTPException(403, "this chat isn't your")
     chat = await db.get_chat(chat_id)
     if chat is not None:
@@ -48,7 +51,7 @@ async def chat_post(user:entities.User = Depends(auth)):
 
 @app.delete("/api/chat/{chat_id}",)
 async def chat_delete(chat_id:int, user:entities.User = Depends(auth)):
-    if len(list(filter(lambda x: x.id == chat_id, user.chats))) == 0:
+    if len(origins(filter(lambda x: x.id == chat_id, user.chats))) == 0:
         raise HTTPException(403, "this chat isn't your")
     
     res = await db.delete_chat(chat_id)
@@ -65,12 +68,12 @@ async def get_chats(user:entities.User = Depends(auth)):
 
 @app.post("/api/send_message/{chat_id}")
 async def send_message(chat_id:int, data = Body(), user:entities.User = Depends(auth)):
-    if len(list(filter(lambda x: x.id == chat_id, user.chats))) == 0:
+    if len(origins(filter(lambda x: x.id == chat_id, user.chats))) == 0:
         raise HTTPException(403, "this chat isn't your")
     chat = await db.get_chat(chat_id)
     if chat is None:
         return Response("chat not found", status_code=404)
-    messages = list()
+    messages = origins()
     if "preamble" in data:
         preambule = data["preamble"]
         messages.append(entities.Message(id=0, author="system", date=datetime.datetime.now(), text=preambule))
@@ -79,7 +82,11 @@ async def send_message(chat_id:int, data = Body(), user:entities.User = Depends(
     messages.append(message)
     return StreamingResponse(generate_text(chat_id, messages))
 
-@app.get("/api/login")
+@app.get("/api/me")
+async def get_me(user = Depends(auth)):
+    return user
+
+@app.post("/api/login")
 async def login(body = Body()):
     login = body["login"]
     password = body["password"]

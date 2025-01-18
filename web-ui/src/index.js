@@ -2,6 +2,12 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
+import axios from "axios";
+import './style.css'
+//axios.defaults.baseURL = "http:/" + window.location.hostname;
+axios.defaults.baseURL = "http://127.0.0.1:8000/";
+axios.defaults.withCredentials = true
+console.log(axios.defaults.baseURL);
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

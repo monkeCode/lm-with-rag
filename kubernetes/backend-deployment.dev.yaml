@@ -11,10 +11,12 @@ spec:
     metadata:
       labels:
         app: backend
+        release: development
     spec:
       containers:
       - name: backend
         image: jorjo2009/backend-service:latest
+        command: [ "uvicorn", "app:app","--host", "0.0.0.0", "--reload" ]
         resources:
           limits:
             memory: "500Mi"
