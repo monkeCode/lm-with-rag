@@ -1,4 +1,9 @@
 This is my pet project inferencing language model with RAG system.
+# State
+- [x] backend - almost done
+- [x] llm service - done
+- [x] rag service - done except db
+- [ ] frontend - in progress 
 # Deployment diagram
 ![image](https://github.com/user-attachments/assets/17f9c221-8f62-4381-a05a-b3397c540aae)
 
